@@ -1,38 +1,48 @@
-import { createSlice } from '@reduxjs/toolkit'
+import { createAction, createSlice, nanoid } from '@reduxjs/toolkit'
 import todosServices from '../services/todos.service';
 import { setError } from './errors';
 
-const initialState = { entities: [], isLoading: true };
+const initialState =
+  {
+    entiries: [],
+    isLoading: true
+  };
 
 const taskSlice = createSlice({
   name: "task",
   initialState,
   reducers: {
     recived(state, action) {
-      state.entities = action.payload
+      state.entiries = action.payload
       state.isLoading = false
     },
     update(state, action) {
-      const elementIndex = state.entities.findIndex(
+      const elementIndex = state.entiries.findIndex(
         (el) => el.id === action.payload.id
       )
-      state.entities[elementIndex] = {
-        ...state.entities[elementIndex],
+      state.entiries[elementIndex] = {
+        ...state.entiries[elementIndex],
         ...action.payload
       }
     },
     remove(state, action){
-        state.entities = state.entities.filter((elem) => elem.id !== action.payload.id)
+        state.entiries = state.entiries.filter((elem) => elem.id !== action.payload.id)
     },
     taskRequested(state) {
       state.isLoading = true
     },
     taskRequestedFailed(state, action) {
       state.isLoading = false
+    },
+    created(state, action) {
+      state.entiries.push(action.payload);
     }
 }})
+
+const createTask = createAction("task/createTask")
+
 const { actions, reducer: taskReducer } = taskSlice
-const { update, remove, recived, taskRequested, taskRequestedFailed } = actions
+const { update, remove, recived, taskRequested, taskRequestedFailed, created } = actions
 
 export const loadTasks = () => async (dispatch) => {
   dispatch(taskRequested());
@@ -45,29 +55,32 @@ export const loadTasks = () => async (dispatch) => {
   }
 }
 export const taskCreate = (id) => async (dispatch, getState) => {
+  console.log("id", id)
+  dispatch(createTask());
   try {
-    const postTask = getState().task.entities.find((elem) => {
+    const postTask = getState().task.entiries.find((elem) => {
       return elem.id === id
     })
-    console.log(postTask)
+
     const data = await todosServices.post(postTask);
-    console.log(data)
-    dispatch(update(data))
+    console.log("d", data);
+    const elem = { ...data, id: nanoid() }
+    dispatch(created(elem))
   } catch (error) {
     dispatch(setError(error.message));
   }  
 }
 export const completeTask = (id) => (dispatch, getState) => {
-  dispatch(update({ id: id, completed: true }));
+  dispatch(update({ id, completed: true }));
 }
 export function titleChanged(id) {
-  return update({ id: id, title: `New title for ${id}` });
+  return update({ id, title: `New title for ${id}` });
 }
 export function taskDeleted(id) {
   return remove({ id });
 }
 
-export const getTasks = () => (state) => state.task.entities;
+export const getTasks = () => (state) => state.task.entiries;
 export const getTaskLoadingStatus = () => (state) => state.task.isLoading;
 
 export default taskReducer;
